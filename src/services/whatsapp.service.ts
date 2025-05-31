@@ -19,7 +19,10 @@ export class WhatsappService {
   private resetClient() {
     this.client = new Client({
       authStrategy: new LocalAuth({ clientId: 'bot-session' }),
-      puppeteer: { headless: true }
+      puppeteer: { 
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox'] // Agregado para entornos como Railway
+      }
     });
     this.qrCode = null;
     this.registerEvents();
