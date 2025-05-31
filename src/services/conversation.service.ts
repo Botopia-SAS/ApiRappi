@@ -8,6 +8,7 @@ const GRAF_WORDS     = ['graficas','gráficas'];
 const TYPE_ORDERS    = ['ordenes','órdenes'];
 const TYPE_EXPENSES  = ['gastos'];
 const NO_WORDS       = ['no','nop','nope','cancelar','nada'];
+const AFFIRMATIVE_WORDS = ['si', 'sí', 'claro', 'por supuesto', 'ok'];
 
 function includesAny(text: string, list: string[]) {
   return list.some(w => text.includes(w));
@@ -21,54 +22,79 @@ export class ConversationService {
   }
 
   /**  
-   * Dado un mensaje raw, devuelve la respuesta o null si no toca  
+   * Dado un mensaje raw, devuelve la respuesta o null si no interviene  
    */
   handle(chatId: string, raw: string): string | null {
-    const text     = raw.trim().toLowerCase();
+    const text = raw.trim().toLowerCase();
+
+    // Si el mensaje es exactamente "baruc", inicia la conversación con un saludo
+    if (text === 'baruc') {
+      this.state.set(chatId, Stage.WAIT_GRAPH);
+      return 'Aquí estoy, ¿en qué puedo ayudarte hoy?';
+    }
+
     const hasBaruc = includesAny(text, BARUC_WORDS);
     const hasGraf  = includesAny(text, GRAF_WORDS);
     const hasOrd   = includesAny(text, TYPE_ORDERS);
     const hasGas   = includesAny(text, TYPE_EXPENSES);
     const hasNo    = includesAny(text, NO_WORDS);
+    const hasAffirmative = includesAny(text, AFFIRMATIVE_WORDS);
 
-    // Si están todas las claves en un solo mensaje → respuesta final
+    // Si se incluye todo en un solo mensaje (con "baruc") → respuesta definitiva
     if (hasBaruc && hasGraf && (hasOrd || hasGas)) {
       this.state.delete(chatId);
       return hasOrd
-        ? 'Baruc hará las gráficas de órdenes por ti 📊'
-        : 'Baruc hará las gráficas de gastos por ti 💰';
+        ? 'haré las gráficas de órdenes por ti, dame un minuto 📊'
+        : 'haré las gráficas de gastos por ti, dame un minuto 💰';
     }
 
-    // Si detecta “no” y hay flujo abierto → cancelar
+    // Cancelar el flujo si se detecta un "no" y hay conversación abierta
     if (hasNo && this.hasState(chatId)) {
       this.state.delete(chatId);
       return 'Entendido, cancelé el flujo.';
     }
 
-    // Sin “baruc” y sin estado → no intervenimos
-    if (!hasBaruc && !this.hasState(chatId)) {
-      return null;
+    // Si ya hay un flujo en curso, proceder según la etapa
+    if (this.hasState(chatId)) {
+      const stage = this.state.get(chatId)!;
+      switch (stage) {
+        case Stage.WAIT_GRAPH:
+          // Si además del trigger "gráficas" ya se incluye el tipo, responde de forma definitiva
+          if (hasGraf && (hasOrd || hasGas)) {
+            this.state.delete(chatId);
+            return hasOrd
+              ? 'haré las gráficas de órdenes por ti, dame un minuto 📊'
+              : 'haré las gráficas de gastos por ti, dame un minuto 💰';
+          }
+          // Si se detecta "gráficas", cambia de etapa
+          if (hasGraf) {
+            this.state.set(chatId, Stage.WAIT_TYPE);
+            return '¿De órdenes o de gasto?';
+          }
+          // Nueva lógica: si se responde afirmativamente, asumimos que se desean gráficas
+          if (hasAffirmative) {
+            this.state.set(chatId, Stage.WAIT_TYPE);
+            return '¿De órdenes o de gasto?';
+          }
+          return '¿Quieres que haga las gráficas? Por favor dime "gráficas" para continuar.';
+
+        case Stage.WAIT_TYPE:
+          if (hasOrd || hasGas) {
+            this.state.delete(chatId);
+            return hasOrd
+              ? 'haré las gráficas de órdenes por ti, dame un minuto 📊'
+              : 'haré las gráficas de gastos por ti, dame un minuto 💰';
+          }
+          return 'Por favor, especifica: "órdenes" o "gasto".';
+      }
     }
 
-    // Continuamos o arrancamos el flujo
-    const stage = this.state.get(chatId) ?? Stage.WAIT_GRAPH;
-    switch (stage) {
-      case Stage.WAIT_GRAPH:
-        if (hasGraf) {
-          this.state.set(chatId, Stage.WAIT_TYPE);
-          return '¡Genial! ¿Qué tipo de gráficas quieres, “órdenes” o “gastos”?';
-        }
-        this.state.set(chatId, Stage.WAIT_GRAPH);
-        return '¿Quieres que haga las gráficas?';
-
-      case Stage.WAIT_TYPE:
-        if (hasOrd || hasGas) {
-          this.state.delete(chatId);
-          return hasOrd
-            ? 'Baruc hará las gráficas de órdenes por ti 📊'
-            : 'Baruc hará las gráficas de gastos por ti 💰';
-        }
-        return 'Por favor dime “órdenes” o “gastos” para continuar.';
+    // Inicia el flujo si se menciona "baruc" en cualquier otro contexto
+    if (hasBaruc) {
+      this.state.set(chatId, Stage.WAIT_GRAPH);
+      return 'Hola, ¿en qué puedo ayudarte? ¿Quieres que haga unas gráficas?';
     }
+
+    return null;
   }
 }

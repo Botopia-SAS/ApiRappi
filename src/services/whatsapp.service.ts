@@ -4,14 +4,15 @@ import { removeSessionDir, delay } from '../utils/session.util';
 import { ConversationService } from './conversation.service';
 import { GeminiService } from './gemini.service';
 import fetch from 'node-fetch';
-import { GRAFICAS_ENDPOINT_URL, CSV_URL } from '../config';
+import { GRAFICAS_ENDPOINT_URL } from '../config';
+import { GoogleSheetsService } from './googleSheets.service';
 
 export class WhatsappService {
   client!: Client;
   private qrCode: string | null = null;
   private conv = new ConversationService();
 
-  constructor(private gemini: GeminiService) {
+  constructor(private gemini: GeminiService, private sheetsService: GoogleSheetsService) {
     this.resetClient();
   }
 
@@ -25,10 +26,6 @@ export class WhatsappService {
   }
 
   private registerEvents() {
-    this.client.on('ready', () => console.log('Cliente listo 🚀'));
-    this.client.on('auth_failure', e => console.error('Auth failure:', e));
-    this.client.on('disconnected', () => console.log('Cliente desconectado'));
-
     this.client.on('message', async msg => {
       if (!msg.from.endsWith('@g.us') || !msg.body) return;
       const text = msg.body.trim().toLowerCase();
@@ -44,15 +41,20 @@ export class WhatsappService {
       await delay(1500);
       await this.client.sendMessage(msg.from, reply);
 
-      if (reply.startsWith('Baruc hará las gráficas de')) {
+      if (reply.startsWith('haré las gráficas de')) {
         const tipo = reply.includes('órdenes') ? 'ordenes' : 'gastos';
+        // Obtén csv_url dinámicamente desde Google Sheets
+        let csv_url: string;
+        try {
+          csv_url = await this.sheetsService.getCSVUrl();
+        } catch (err) {
+          console.error('❌ Error obteniendo csv_url:', err);
+          return;
+        }
         const payload = {
-          csv_url: CSV_URL,
+          csv_url,
           tipo
         };
-
-        // ←– log del payload
-        console.log('🔔 Enviando a gráficas:', GRAFICAS_ENDPOINT_URL, payload);
 
         try {
           const res = await fetch(GRAFICAS_ENDPOINT_URL, {
@@ -61,8 +63,6 @@ export class WhatsappService {
             body: JSON.stringify(payload)
           });
           const textBody = await res.text();
-          console.log('🔔 Gráficas response body:', textBody);
-
           if (res.ok) {
             let imageUrls: string[] = [];
             try {
@@ -72,7 +72,7 @@ export class WhatsappService {
               console.error('❌ No es JSON válido:', e);
             }
 
-            // ahora sí es un array
+            // Envía cada imagen
             for (const url of imageUrls) {
               try {
                 const media = await MessageMedia.fromUrl(url);
@@ -93,11 +93,10 @@ export class WhatsappService {
 
   /** Fuerza reinicio + genera QR siempre */
   async generateQr(): Promise<string> {
-    console.log('→ generateQr() start');
     // 1) destruye browser si existe (silenciar error si no hay)
     try {
       await this.client.destroy();
-      console.log('– client.destroyed');
+
     } catch (e: any) {
       console.warn('– destroy skipped:', e.message);
     }
@@ -107,13 +106,11 @@ export class WhatsappService {
 
     // 3) escucha el evento QR
     this.client.once('qr', qr => {
-      console.log('– QR recibido:', qr);
       this.qrCode = qr;
     });
 
     // 4) inicializa (lanza Puppeteer y dispara 'qr')
     try {
-      console.log('– llamando a client.initialize()');
       await this.client.initialize();
     } catch (err) {
       console.error('⚠️ Error initializing client:', err);
@@ -133,16 +130,13 @@ export class WhatsappService {
       });
     });
 
-    console.log('– QR listo, devolviendo al router');
     return qr;
   }
 
   /** Cierra Puppeteer y borra la carpeta de sesión */
   async logout() {
-    console.log('→ logout()');
     try {
       await this.client.destroy();
-      console.log('– client.destroyed');
     } catch (e: any) {
       console.warn('– destroy error:', e.message);
     }

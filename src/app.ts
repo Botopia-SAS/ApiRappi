@@ -9,7 +9,9 @@ const app = express();
 app.use(express.json());
 
 const gemini = new GeminiService();
-const whatsappService = new WhatsappService(gemini);
+import { GoogleSheetsService } from './services/googleSheets.service';
+const sheetsService = new GoogleSheetsService();
+const whatsappService = new WhatsappService(gemini, sheetsService);
 
 app.use('/api', whatsappRouter(whatsappService));
 

@@ -10,10 +10,8 @@ export const whatsappRouter = (whService: WhatsappService): Router => {
 
   // 1) Endpoint que devuelve el string del QR
   router.get('/qr', async (_, res) => {
-    console.log('HTTP GET /api/qr');
     try {
       const qr = await whService.generateQr();
-      console.log('– Enviando QR al cliente');
       res.json({ qr });
     } catch (err: any) {
       console.error('⚠️ Error al generar QR:', err);
