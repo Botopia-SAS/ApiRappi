@@ -10,9 +10,10 @@ import { GoogleSheetsService } from './googleSheets.service';
 export class WhatsappService {
   client!: Client;
   private qrCode: string | null = null;
-  private conv = new ConversationService();
+  private conv: ConversationService;
 
   constructor(private gemini: GeminiService, private sheetsService: GoogleSheetsService) {
+    this.conv = new ConversationService(this.gemini);
     this.resetClient();
   }
 
@@ -33,10 +34,9 @@ export class WhatsappService {
       if (!msg.from.endsWith('@g.us') || !msg.body) return;
       const text = msg.body.trim().toLowerCase();
 
-      // solo si aparece “baruc” o ya estamos en flow
       if (!text.includes('baruc') && !this.conv.hasState(msg.from)) return;
 
-      const reply = this.conv.handle(msg.from, msg.body);
+      const reply = await this.conv.handle(msg.from, msg.body);
       if (!reply) return;
 
       const chat = await msg.getChat();

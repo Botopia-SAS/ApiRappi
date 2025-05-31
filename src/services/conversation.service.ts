@@ -1,10 +1,12 @@
+import { GeminiService } from './gemini.service';
+
 export enum Stage {
   WAIT_GRAPH = 'WAIT_GRAPH',
   WAIT_TYPE  = 'WAIT_TYPE'
 }
 
 const BARUC_WORDS    = ['baruc'];
-const GRAF_WORDS     = ['graficas','gráficas'];
+const GRAF_WORDS     = ['graficas','gráficas','gráfica','grafica'];
 const TYPE_ORDERS    = ['ordenes','órdenes'];
 const TYPE_EXPENSES  = ['gastos'];
 const NO_WORDS       = ['no','nop','nope','cancelar','nada'];
@@ -17,6 +19,8 @@ function includesAny(text: string, list: string[]) {
 export class ConversationService {
   private state = new Map<string, Stage>();
 
+  constructor(private gemini: GeminiService) {}
+
   hasState(chatId: string): boolean {
     return this.state.has(chatId);
   }
@@ -24,13 +28,22 @@ export class ConversationService {
   /**  
    * Dado un mensaje raw, devuelve la respuesta o null si no interviene  
    */
-  handle(chatId: string, raw: string): string | null {
+  async handle(chatId: string, raw: string): Promise<string | null> {
     const text = raw.trim().toLowerCase();
 
     // Si el mensaje es exactamente "baruc", inicia la conversación con un saludo
     if (text === 'baruc') {
       this.state.set(chatId, Stage.WAIT_GRAPH);
-      return 'Aquí estoy, ¿en qué puedo ayudarte hoy?';
+      try {
+        const prompt = `Genera un saludo amigable y natural pero variado y original como asistente, preguntando en qué puedes ayudar. 
+          Máximo 2 frases cortas. Incluye algún emoji relevante pero variado.
+          Ejemplo: "Aquí estoy! ¿En qué puedo ayudarte? 😊"`;
+        const response = await this.gemini.generate(prompt);
+        return response || 'Aquí estoy! ¿En qué puedo? 😊'; // fallback por si falla
+      } catch (err) {
+        console.error('Error generando saludo:', err);
+        return 'Aquí estoy! ¿En qué puedo ayudarte? 😊';
+      }
     }
 
     const hasBaruc = includesAny(text, BARUC_WORDS);
