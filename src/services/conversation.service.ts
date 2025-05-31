@@ -9,7 +9,7 @@ const BARUC_WORDS    = ['baruc'];
 const GRAF_WORDS     = ['graficas','gráficas','gráfica','grafica'];
 const TYPE_ORDERS    = ['ordenes','órdenes'];
 const TYPE_EXPENSES  = ['gastos'];
-const NO_WORDS       = ['no','nop','nope','cancelar','nada'];
+const NO_WORDS       = ['no','nop','nope','cancelar','nada','olvídalo','olvidar','olvidalo','no quiero','no quiero nada'];
 const AFFIRMATIVE_WORDS = ['si', 'sí', 'claro', 'por supuesto', 'ok'];
 
 function includesAny(text: string, list: string[]) {
@@ -35,8 +35,8 @@ export class ConversationService {
     if (text === 'baruc') {
       this.state.set(chatId, Stage.WAIT_GRAPH);
       try {
-        const prompt = `Genera un saludo amigable y natural pero variado y original como asistente, preguntando en qué puedes ayudar. 
-          Máximo 2 frases cortas. Incluye algún emoji relevante pero variado.
+        const prompt = `Genera un saludo serio pero amigable y natural como asistente, preguntando en qué puedes ayudar. 
+          Máximo 2 frases cortas. Incluye algún un solo emoji relevante.
           Ejemplo: "Aquí estoy! ¿En qué puedo ayudarte? 😊"`;
         const response = await this.gemini.generate(prompt);
         return response || 'Aquí estoy! ¿En qué puedo? 😊'; // fallback por si falla
