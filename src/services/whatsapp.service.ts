@@ -6,6 +6,14 @@ import { GeminiService } from './gemini.service';
 import fetch from 'node-fetch';
 import { GRAFICAS_ENDPOINT_URL } from '../config';
 import { GoogleSheetsService } from './googleSheets.service';
+import { v2 as cloudinary } from 'cloudinary';
+
+// Configurar Cloudinary (añade esto después de los imports)
+cloudinary.config({ 
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
 export class WhatsappService {
   client!: Client;
@@ -46,20 +54,35 @@ export class WhatsappService {
 
       if (reply.startsWith('haré las gráficas de')) {
         const tipo = reply.includes('órdenes') ? 'ordenes' : 'gastos';
-        // Obtén csv_url dinámicamente desde Google Sheets
-        let csv_url: string;
+        
         try {
-          csv_url = await this.sheetsService.getCSVUrl();
-        } catch (err) {
-          console.error('❌ Error obteniendo csv_url:', err);
-          return;
-        }
-        const payload = {
-          csv_url,
-          tipo
-        };
+          // 1. Obtener datos CSV
+          const csvData = await this.sheetsService.getDataAsCSV();
+          
+          // 2. Subir a Cloudinary
+          const uploadResponse = await new Promise<any>((resolve, reject) => {
+            cloudinary.uploader.upload_stream(
+              {
+                resource_type: 'raw',
+                public_id: `data_${Date.now()}`,
+                format: 'csv'
+              },
+              (error, result) => {
+                if (error) reject(error);
+                else resolve(result);
+              }
+            ).end(csvData);
+          });
 
-        try {
+          // 3. Usar la URL segura de Cloudinary
+          const csv_url = (uploadResponse as { secure_url: string }).secure_url;
+          
+          const payload = {
+            csv_url,
+            tipo
+          };
+
+          // 4. Enviar al microservicio
           const res = await fetch(GRAFICAS_ENDPOINT_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -75,7 +98,6 @@ export class WhatsappService {
               console.error('❌ No es JSON válido:', e);
             }
 
-            // Envía cada imagen
             for (const url of imageUrls) {
               try {
                 const media = await MessageMedia.fromUrl(url);
@@ -87,8 +109,9 @@ export class WhatsappService {
           } else {
             console.error('Error al solicitar gráficas:', textBody);
           }
-        } catch (e) {
-          console.error('❌ Falló request a gráficas:', e);
+        } catch (err) {
+          console.error('❌ Error procesando datos:', err);
+          await this.client.sendMessage(msg.from, 'Lo siento, hubo un error al procesar los datos 😕');
         }
       }
     });

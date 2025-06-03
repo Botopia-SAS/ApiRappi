@@ -89,7 +89,7 @@ export class ConversationService {
             this.state.set(chatId, Stage.WAIT_TYPE);
             return '¿De órdenes o de gasto?';
           }
-          return '¿Quieres que haga las gráficas? Por favor dime "gráficas" para continuar.';
+          return 'Por ahora solo tengo información para hacer gráficas de órdenes en tiempo real Por favor dime "gráficas" para continuar.';
 
         case Stage.WAIT_TYPE:
           if (hasOrd || hasGas) {
