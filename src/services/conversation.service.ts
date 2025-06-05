@@ -7,7 +7,7 @@ export enum Stage {
 
 const BARUC_WORDS    = ['baruc'];
 const GRAF_WORDS     = ['graficas','gráficas','gráfica','grafica'];
-const TYPE_ORDERS    = ['ordenes','órdenes'];
+const TYPE_ORDERS    = ['ordenes','órdenes','orden','hoy','órden'];
 const TYPE_EXPENSES  = ['gastos'];
 const NO_WORDS       = ['no','nop','nope','cancelar','nada','olvídalo','olvidar','olvidalo','no quiero','no quiero nada'];
 const AFFIRMATIVE_WORDS = ['si', 'sí', 'claro', 'por supuesto', 'ok'];
