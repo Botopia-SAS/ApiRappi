@@ -40,11 +40,38 @@ export class WhatsappService {
   private registerEvents() {
     this.client.on('message', async msg => {
       if (!msg.from.endsWith('@g.us') || !msg.body) return;
-      const text = msg.body.trim().toLowerCase();
 
-      if (!text.includes('baruc') && !this.conv.hasState(msg.from)) return;
+      const text = msg.body.trim();
+      const lowerText = text.toLowerCase();
 
-      const reply = await this.conv.handle(msg.from, msg.body);
+      // Obtener ID del bot
+      const botNumber = this.client.info.wid._serialized;
+
+      // Verificar si el bot fue mencionado
+      const wasMentioned = Boolean(
+        msg.mentionedIds?.some(id => 
+          (typeof id === 'string' ? id : id._serialized) === botNumber
+        )
+      );
+
+      console.log('Mention detection:', {
+        text: msg.body,
+        botNumber,
+        mentionedIds: msg.mentionedIds?.map(id => typeof id === 'string' ? id : id._serialized),
+        wasMentioned
+      });
+      
+      // Activar el flujo solo si hay mención o si el flujo ya está iniciado
+      if (!wasMentioned && !this.conv.hasState(msg.from)) return;
+
+      // Si el bot fue mencionado pero la palabra "baruc" no está en el mensaje,
+      // se la agregamos al comienzo para activar el flujo.
+      let flowText = lowerText;
+      if (wasMentioned && !lowerText.includes('baruc')) {
+        flowText = `baruc ${lowerText}`;
+      }
+
+      const reply = await this.conv.handle(msg.from, flowText);
       if (!reply) return;
 
       const chat = await msg.getChat();
@@ -52,7 +79,7 @@ export class WhatsappService {
       await delay(1500);
       await this.client.sendMessage(msg.from, reply);
 
-      if (reply.startsWith('haré las gráficas de')) {
+      if (reply.toLowerCase().startsWith('haré las gráficas de')) {
         const tipo = reply.includes('órdenes') ? 'ordenes' : 'gastos';
         
         try {
