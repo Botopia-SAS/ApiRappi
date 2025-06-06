@@ -7,9 +7,10 @@ import fetch from 'node-fetch';
 import { GRAFICAS_ENDPOINT_URL } from '../config';
 import { GoogleSheetsService } from './googleSheets.service';
 import { v2 as cloudinary } from 'cloudinary';
+import { ContactId } from 'whatsapp-web.js';
 
 // Configurar Cloudinary (añade esto después de los imports)
-cloudinary.config({ 
+cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET
@@ -28,7 +29,7 @@ export class WhatsappService {
   private resetClient() {
     this.client = new Client({
       authStrategy: new LocalAuth({ clientId: 'bot-session' }),
-      puppeteer: { 
+      puppeteer: {
         headless: true,
         args: ['--no-sandbox', '--disable-setuid-sandbox'] // Agregado para entornos como Railway
       }
@@ -40,52 +41,44 @@ export class WhatsappService {
   private registerEvents() {
     this.client.on('message', async msg => {
       if (!msg.from.endsWith('@g.us') || !msg.body) return;
+      const text = msg.body.trim().toLowerCase();
+      const BOT_ID = this.client.info.wid._serialized as unknown as ContactId;
+      const isBotMentioned = msg.mentionedIds?.includes(BOT_ID)
 
-      const text = msg.body.trim();
-      const lowerText = text.toLowerCase();
-
-      // Obtener ID del bot
-      const botNumber = this.client.info.wid._serialized;
-
-      // Verificar si el bot fue mencionado
-      const wasMentioned = Boolean(
-        msg.mentionedIds?.some(id => 
-          (typeof id === 'string' ? id : id._serialized) === botNumber
-        )
-      );
-
-      console.log('Mention detection:', {
-        text: msg.body,
-        botNumber,
-        mentionedIds: msg.mentionedIds?.map(id => typeof id === 'string' ? id : id._serialized),
-        wasMentioned
+      console.log('Mensaje recibido:', {
+        from: msg.from,
+        body: msg.body
       });
-      
-      // Activar el flujo solo si hay mención o si el flujo ya está iniciado
-      if (!wasMentioned && !this.conv.hasState(msg.from)) return;
 
-      // Si el bot fue mencionado pero la palabra "baruc" no está en el mensaje,
-      // se la agregamos al comienzo para activar el flujo.
-      let flowText = lowerText;
-      if (wasMentioned && !lowerText.includes('baruc')) {
-        flowText = `baruc ${lowerText}`;
+      console.log('Texto procesado:', text);
+      console.log('¿Mencionado al bot?', isBotMentioned);
+
+      if (!isBotMentioned && !text.includes('baruc') && !this.conv.hasState(msg.from)) {
+        return;
       }
 
-      const reply = await this.conv.handle(msg.from, flowText);
+      const rawForConv = isBotMentioned && !text.includes('baruc')
+        ? `baruc ${msg.body}`   
+        : msg.body;
+
+        console.log('Mensaje para la conversación:', rawForConv);
+
+      const reply = await this.conv.handle(msg.from, rawForConv);
       if (!reply) return;
 
       const chat = await msg.getChat();
+      await delay(500);
       await chat.sendStateTyping();
       await delay(1500);
       await this.client.sendMessage(msg.from, reply);
 
-      if (reply.toLowerCase().startsWith('haré las gráficas de')) {
+      if (reply.startsWith('Haré las gráficas de')) {
         const tipo = reply.includes('órdenes') ? 'ordenes' : 'gastos';
-        
+
         try {
           // 1. Obtener datos CSV
           const csvData = await this.sheetsService.getDataAsCSV();
-          
+
           // 2. Subir a Cloudinary
           const uploadResponse = await new Promise<any>((resolve, reject) => {
             cloudinary.uploader.upload_stream(
@@ -103,7 +96,7 @@ export class WhatsappService {
 
           // 3. Usar la URL segura de Cloudinary
           const csv_url = (uploadResponse as { secure_url: string }).secure_url;
-          
+
           const payload = {
             csv_url,
             tipo
