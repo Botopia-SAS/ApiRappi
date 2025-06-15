@@ -15,6 +15,6 @@ const whatsappService = new WhatsappService(gemini, sheetsService);
 
 app.use('/api', whatsappRouter(whatsappService));
 
-app.listen(PORT, () =>
+app.listen(PORT, '0.0.0.0', () =>
   console.log(`🚀 Server corriendo en http://localhost:${PORT}`)
 );
