@@ -6,7 +6,7 @@ export enum Stage {
 }
 
 const BARUC_WORDS    = ['baruc', 'Baruc', 'BARUC'];
-const GRAF_WORDS     = ['graficas','gráficas','gráfica','grafica'];
+const GRAF_WORDS     = ['graficas','gráficas','gráfica','grafica','curvas','curva','cúrvas','cúrva','curba','curbas','cúrbas','cúrba'];
 const TYPE_ORDERS    = ['ordenes','órdenes','hoy','Hoy','ordenes de hoy','órdenes de hoy','ordenes del día','órdenes del día'];
 const TYPE_EXPENSES  = ['gastos'];
 const NO_WORDS       = ['no','nop','nope','cancelar','nada','olvídalo','olvidar','olvidalo','no quiero','no quiero nada'];
