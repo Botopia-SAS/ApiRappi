@@ -2,13 +2,17 @@ import { GeminiService } from './gemini.service';
 
 export enum Stage {
   WAIT_GRAPH = 'WAIT_GRAPH',
-  WAIT_TYPE  = 'WAIT_TYPE'
+  WAIT_TYPE  = 'WAIT_TYPE',
+  ANALYZING_MLTV = 'ANALYZING_MLTV',
+  ANALYZING_OP_ZONES = 'ANALYZING_OP_ZONES'
 }
 
 const BARUC_WORDS    = ['baruc', 'Baruc', 'BARUC'];
-const GRAF_WORDS     = ['graficas','gráficas','gráfica','grafica','curvas','curva','cúrvas','cúrva','curba','curbas','cúrbas','cúrba'];
+const GRAF_WORDS     = ['graficas','gráficas','gráfica','grafica','curvas','curva','cúrvas','cúrva','curba','curbas','cúrbas','cúrba','curvas','curva','pasas'];
 const TYPE_ORDERS    = ['ordenes','órdenes','hoy','Hoy','ordenes de hoy','órdenes de hoy','ordenes del día','órdenes del día'];
 const TYPE_EXPENSES  = ['gastos'];
+const MLTV_WORDS     = ['mltv', 'MLTV', 'multivertical', 'multiverticalidad', 'multi vertical', 'semana pasada', 'como nos fue'];
+const OP_ZONES_WORDS = ['op zones', 'opzones', 'op-zones', 'zones', 'zonas', 'reporte zones', 'reporte de zones', 'reporte op zones', 'base semanal', 'variación semanal'];
 const NO_WORDS       = ['no','nop','nope','cancelar','nada','olvídalo','olvidar','olvidalo','no quiero','no quiero nada'];
 const AFFIRMATIVE_WORDS = ['si', 'sí', 'claro', 'por supuesto', 'ok'];
 
@@ -50,8 +54,22 @@ export class ConversationService {
     const hasGraf  = includesAny(text, GRAF_WORDS);
     const hasOrd   = includesAny(text, TYPE_ORDERS);
     const hasGas   = includesAny(text, TYPE_EXPENSES);
+    const hasMLTV  = includesAny(text, MLTV_WORDS);
+    const hasOpZones = includesAny(text, OP_ZONES_WORDS);
     const hasNo    = includesAny(text, NO_WORDS);
     const hasAffirmative = includesAny(text, AFFIRMATIVE_WORDS);
+
+    // Detectar preguntas sobre OP ZONES directamente
+    if (hasBaruc && hasOpZones) {
+      this.state.set(chatId, Stage.ANALYZING_OP_ZONES);
+      return 'Perfecto! Voy a generar el reporte de OP ZONES con la variación semanal. Dame un momento... 📊🌍';
+    }
+
+    // Detectar preguntas sobre MLTV/multiverticalidad directamente
+    if (hasBaruc && hasMLTV) {
+      this.state.set(chatId, Stage.ANALYZING_MLTV);
+      return 'Perfecto! Voy a analizar los datos de multiverticalidad de la semana pasada. Dame un momento... 📊✨';
+    }
 
     // Si se incluye todo en un solo mensaje (con "baruc") → respuesta definitiva
     if (hasBaruc && hasGraf && (hasOrd || hasGas)) {
@@ -72,6 +90,18 @@ export class ConversationService {
       const stage = this.state.get(chatId)!;
       switch (stage) {
         case Stage.WAIT_GRAPH:
+          // Detectar si pregunta sobre OP ZONES en esta etapa
+          if (hasOpZones) {
+            this.state.set(chatId, Stage.ANALYZING_OP_ZONES);
+            return 'Perfecto! Voy a generar el reporte de OP ZONES con la variación semanal. Dame un momento... 📊🌍';
+          }
+          
+          // Detectar si pregunta sobre MLTV en esta etapa
+          if (hasMLTV) {
+            this.state.set(chatId, Stage.ANALYZING_MLTV);
+            return 'Perfecto! Voy a analizar los datos de multiverticalidad de la semana pasada. Dame un momento... 📊✨';
+          }
+          
           // Si además del trigger "gráficas" ya se incluye el tipo, responde de forma definitiva
           if (hasGraf && (hasOrd || hasGas)) {
             this.state.delete(chatId);
@@ -89,7 +119,7 @@ export class ConversationService {
             this.state.set(chatId, Stage.WAIT_TYPE);
             return '¿De órdenes o de gasto?';
           }
-          return 'Por ahora solo tengo información para hacer gráficas de órdenes en tiempo real Por favor dime "gráficas" para continuar.';
+          return 'Puedo ayudarte con:\n• Gráficas de órdenes/gasto\n• Análisis de multiverticalidad (MLTV)\n• Reporte de OP ZONES\n\n¿Qué necesitas?';
 
         case Stage.WAIT_TYPE:
           if (hasOrd || hasGas) {
@@ -99,6 +129,14 @@ export class ConversationService {
               : 'haré las gráficas de gastos por ti, dame un minuto 💰';
           }
           return 'Por favor, especifica: "órdenes" o "gasto".';
+
+        case Stage.ANALYZING_MLTV:
+          // Este estado se manejará en WhatsappService
+          return null;
+
+        case Stage.ANALYZING_OP_ZONES:
+          // Este estado se manejará en WhatsappService
+          return null;
       }
     }
 
@@ -109,5 +147,29 @@ export class ConversationService {
     }
 
     return null;
+  }
+
+  // Método auxiliar para limpiar el estado después del análisis MLTV
+  clearMLTVState(chatId: string) {
+    if (this.state.get(chatId) === Stage.ANALYZING_MLTV) {
+      this.state.delete(chatId);
+    }
+  }
+
+  // Método auxiliar para limpiar el estado después del análisis OP ZONES
+  clearOpZonesState(chatId: string) {
+    if (this.state.get(chatId) === Stage.ANALYZING_OP_ZONES) {
+      this.state.delete(chatId);
+    }
+  }
+
+  // Método auxiliar para verificar si está en modo análisis MLTV
+  isAnalyzingMLTV(chatId: string): boolean {
+    return this.state.get(chatId) === Stage.ANALYZING_MLTV;
+  }
+
+  // Método auxiliar para verificar si está en modo análisis OP ZONES
+  isAnalyzingOpZones(chatId: string): boolean {
+    return this.state.get(chatId) === Stage.ANALYZING_OP_ZONES;
   }
 }

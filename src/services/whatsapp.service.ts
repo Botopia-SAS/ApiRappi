@@ -61,7 +61,7 @@ export class WhatsappService {
         ? `baruc ${msg.body}`   
         : msg.body;
 
-        console.log('Mensaje para la conversación:', rawForConv);
+      console.log('Mensaje para la conversación:', rawForConv);
 
       const reply = await this.conv.handle(msg.from, rawForConv);
       if (!reply) return;
@@ -72,6 +72,31 @@ export class WhatsappService {
       await delay(1500);
       await this.client.sendMessage(msg.from, reply);
 
+      // Manejar análisis OP ZONES
+      if (this.conv.isAnalyzingOpZones(msg.from)) {
+        try {
+          await this.handleOpZonesAnalysis(msg.from);
+        } catch (error) {
+          console.error('Error en análisis OP ZONES:', error);
+          await this.client.sendMessage(msg.from, 'Lo siento, hubo un error al generar el reporte de OP ZONES 😕');
+        } finally {
+          this.conv.clearOpZonesState(msg.from);
+        }
+      }
+
+      // Manejar análisis MLTV
+      if (this.conv.isAnalyzingMLTV(msg.from)) {
+        try {
+          await this.handleMLTVAnalysis(msg.from);
+        } catch (error) {
+          console.error('Error en análisis MLTV:', error);
+          await this.client.sendMessage(msg.from, 'Lo siento, hubo un error al analizar los datos de multiverticalidad 😕');
+        } finally {
+          this.conv.clearMLTVState(msg.from);
+        }
+      }
+
+      // Manejar gráficas existentes
       if (reply.startsWith('Haré las gráficas de')) {
         const tipo = reply.includes('órdenes') ? 'ordenes' : 'gastos';
 
@@ -135,6 +160,148 @@ export class WhatsappService {
         }
       }
     });
+  }
+
+  /**
+   * Maneja el análisis de datos OP ZONES con Gemini
+   */
+  private async handleOpZonesAnalysis(chatId: string) {
+    try {
+      // 1. Obtener datos OP ZONES de Google Sheets
+      const opZonesData = await this.sheetsService.getOpZonesDataForAnalysis();
+      
+      // 2. Crear prompt específico para OP ZONES
+      const analysisPrompt = `
+Genera un reporte que muestre, la variación entre la semana actual y la anterior en cuanto a las Bases de usuarios y el número de órdenes.
+La información debe estar segmentada por país y por clasificación de zonas (0,2,4), responde en un formato claro y tipo chat de WhatsApp.
+
+Datos a analizar:
+${opZonesData}
+
+INSTRUCCIONES ESPECÍFICAS:
+- Saluda al equipo, por ejemplo: "Hola team, aquí está el reporte de OP ZONES"
+- Formato de mensaje de WhatsApp (usa emojis relevantes)
+- Muestra variaciones porcentuales y absolutas
+- Segmenta por país y clasificación de zonas (0,2,4)
+- Resalta los datos más importantes
+- Usa formato legible para móvil
+- Máximo 500 palabras
+- Por país añade las 5 zonas con más usuarios
+_ Incluye la variación semanal de bases de usuarios
+- Incluye la variación semanal de órdenes
+
+Ejemplo de formato esperado:
+🌍 **REPORTE OP ZONES - VARIACIÓN SEMANAL**
+
+📊 **ARGENTINA** 
+Zona 0: +15% órdenes (📈 +1,250)
+La base aumentó un 10% respecto a la semana pasada (+100 usuarios)
+
+Zona 2: +10% órdenes (📈 +800)
+La base aumentó un 5% respecto a la semana pasada (+50 usuarios)
+
+TOP 5 zonas: Buenos Aires, Córdoba, Rosario, Mendoza, La Plata
+
+
+
+📊 **COLOMBIA**
+Zona 2: -5% órdenes (📉 -420)
+La base decreció un 20% respecto a la semana pasada (-200 usuarios)
+
+Zona 4: +8% órdenes (📈 +600)
+La base aumentó un 15% respecto a la semana pasada (+150 usuarios)
+
+TOP 5 zonas: Bogotá, Medellín, Cali, Barranquilla, Cartagena
+
+💡 **Insights principales:**
+- Mayor crecimiento en...
+- Atención requerida en...
+      `;
+
+      // 3. Enviar a Gemini para análisis
+      await delay(2500); // Simular tiempo de procesamiento
+      const analysis = await this.gemini.generate(analysisPrompt, { temperature: 0.2 });
+
+      // 4. Enviar reporte al chat
+      await this.client.sendMessage(chatId, analysis);
+      
+    } catch (error) {
+      console.error('Error en análisis OP ZONES:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Maneja el análisis de datos MLTV con Gemini
+   */
+  private async handleMLTVAnalysis(chatId: string) {
+    try {
+      // 1. Obtener datos MLTV de Google Sheets
+      const mltvData = await this.sheetsService.getMLTVDataForAnalysis();
+      
+      // 2. Calcular fechas correctas
+      const today = new Date();
+      const currentWeekStart = new Date(today);
+      currentWeekStart.setDate(today.getDate() - today.getDay() + 1); // Lunes de esta semana
+      
+      const lastWeekStart = new Date(currentWeekStart);
+      lastWeekStart.setDate(currentWeekStart.getDate() - 7); // Lunes de la semana pasada
+      
+      const lastWeekEnd = new Date(lastWeekStart);
+      lastWeekEnd.setDate(lastWeekStart.getDate() + 6); // Domingo de la semana pasada
+      
+      // Formatear fechas
+      const formatDate = (date: Date) => {
+        return date.toLocaleDateString('es-ES', { 
+          day: '2-digit', 
+          month: '2-digit', 
+          year: 'numeric' 
+        });
+      };
+      
+      const todayStr = formatDate(today);
+      const lastWeekStr = `${formatDate(lastWeekStart)} al ${formatDate(lastWeekEnd)}`;
+      
+      // 3. Crear prompt mejorado para Gemini
+      const analysisPrompt = `
+Eres un analista de datos de Rappi especializado en multiverticalidad (MLTV). 
+
+CONTEXTO TEMPORAL:
+- Fecha actual: ${todayStr}
+- Semana pasada a analizar: ${lastWeekStr}
+- La semana actual (${formatDate(currentWeekStart)} en adelante) NO debe incluirse en el análisis
+
+INSTRUCCIONES:
+Analiza ÚNICAMENTE los datos correspondientes a la semana pasada (${lastWeekStr}) de los siguientes datos de multiverticalidad:
+
+${mltvData}
+
+IMPORTANTE: 
+- Filtra mentalmente solo los datos de la semana ${lastWeekStr}
+- Ignora cualquier dato de la semana actual (${formatDate(currentWeekStart)} en adelante)
+- Si no encuentras datos específicos de la semana pasada, menciona que los datos pueden estar incompletos
+
+Por favor proporciona:
+1. **Resumen ejecutivo** (performance de la semana ${lastWeekStr})
+2. **Métricas destacadas** (números específicos de esa semana)
+3. **Tendencias observadas** (comparación con semanas anteriores si disponible)
+4. **Recomendaciones** (2-3 acciones específicas basadas en los datos)
+
+Usa emojis relevantes y mantén un tono profesional pero accesible. Máximo 400 palabras.
+Si los datos no contienen información clara de la semana pasada, menciona esta limitación.
+      `;
+
+      // 4. Enviar a Gemini para análisis
+      await delay(2000); // Simular tiempo de procesamiento
+      const analysis = await this.gemini.generate(analysisPrompt, { temperature: 0.3 });
+
+      // 5. Enviar análisis al chat con fechas correctas
+      await this.client.sendMessage(chatId, `📊 **ANÁLISIS DE MULTIVERTICALIDAD**\n**Semana analizada: ${lastWeekStr}**\n\n${analysis}`);
+      
+    } catch (error) {
+      console.error('Error en análisis MLTV:', error);
+      throw error;
+    }
   }
 
   /** Fuerza reinicio + genera QR siempre */
