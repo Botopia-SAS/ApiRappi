@@ -1,4 +1,4 @@
-import { GeminiService } from './gemini.service';
+import { GeminiService } from '../thirtparty/gemini.service';
 
 export class GraphFlowService {
   constructor(private gemini: GeminiService) {}
