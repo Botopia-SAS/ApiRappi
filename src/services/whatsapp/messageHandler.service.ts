@@ -284,7 +284,7 @@ export class MessageHandlerService {
           }
           finalMessage += ` 📊`;
         } else if (serialializationErrors > 0) {
-          finalMessage += ` Se procesaron ${serialializationErrors}/${mediaObjects.length} gráficas (errores de conexión pero probablemente enviadas) 📊`;
+          finalMessage += ` Se procesaron ${serialializationErrors}/${mediaObjects.length} gráficas 📊`;
         }
 
         await this.messageSender.sendMessage(chatId, finalMessage);

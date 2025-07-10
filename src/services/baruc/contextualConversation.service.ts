@@ -216,7 +216,7 @@ Analiza la conversación completa y responde SOLO con JSON válido:
   private async askForMissingData(intent: IntentResponse, missingField: string): Promise<string> {
     const prompts = {
       variable: '¿Qué tipo de gráficas quieres ver? 📊\n• Órdenes\n• Gastos',
-      periodo: '¿Cuántas semanas de datos quieres ver? 📅\n• 1-2 semanas (reciente)\n• 3-4 semanas (máximo disponible)',
+      periodo: '¿Cuántas semanas de datos quieres ver? 📅\n• 1 semana\n• 2 semanas\n• 3 semanas\n• 4 semanas (máximo disponible)',
       tipo_reporte: intent.intencion === 'mltv' 
         ? '¿Qué tipo de análisis MLTV necesitas? 📊\n• Semanal\n• Mensual'
         : '¿Qué tipo de reporte de zonas quieres? 🗺️\n• Semanal\n• Mensual'
