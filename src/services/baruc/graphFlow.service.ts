@@ -23,7 +23,7 @@ export class GraphFlowService {
       if (graphInfo.VARIABLE === 'ORDERS') {
         return 'Haré las gráficas de órdenes por ti, dame un minuto 📊';
       } else if (graphInfo.VARIABLE === 'EXPENSES') {
-        return 'Haré las gráficas de gastos por ti, dame un minuto 💰';
+        return 'Haré las gráficas de gasto por ti, dame un minuto 💰';
       } else {
         return 'No se pudo determinar el tipo de gráfica.';
       }

@@ -3,7 +3,7 @@ import { GeminiService } from '../thirtparty/gemini.service';
 
 export interface IntentResponse {
   intencion: 'graficas' | 'mltv' | 'op_zones' | 'saludo' | 'desconocido';
-  variable?: 'ordenes' | 'gastos';
+  variable?: 'ordenes' | 'gasto';
   periodo?: number;
   tipo_reporte?: 'semanal' | 'mensual';
 }
@@ -38,11 +38,11 @@ Eres un asistente amigable. El usuario quiere generar gráficas pero no especifi
 
 Genera una pregunta concisa y amigable para preguntarle si quiere ver gráficas de:
 - Órdenes
-- Gastos
+- gasto
 
 Ejemplos de buenas preguntas:
-- "¿Qué tipo de gráficas quieres ver? 📊 (órdenes o gastos)"
-- "¿Prefieres ver datos de órdenes o gastos? 📈"
+- "¿Qué tipo de gráficas quieres ver? 📊 (órdenes o gasto)"
+- "¿Prefieres ver datos de órdenes o gasto? 📈"
 
 Genera UNA pregunta similar, amigable y directa:
 `;
@@ -52,7 +52,7 @@ Genera UNA pregunta similar, amigable y directa:
       return response.trim();
     } catch (error) {
       console.error('Error generando pregunta para variable:', error);
-      return '¿Qué tipo de gráficas quieres ver? 📊 (órdenes o gastos)';
+      return '¿Qué tipo de gráficas quieres ver? 📊 (órdenes o gasto)';
     }
   }
 

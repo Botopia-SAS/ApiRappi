@@ -116,8 +116,8 @@ export class GoogleSheetsService {
 
     // ✅ INCLUIR COLUMNAS DE PERÍODO ACUMULATIVO (sin duplicados)
     const periodPatterns = [
-      'TODAY', 'HOY', 'ORDERS_TODAY', 'GASTOS_TODAY',
-      'YESTERDAY', 'AYER', 'ORDERS_YESTERDAY', 'GASTOS_YESTERDAY'
+      'TODAY', 'HOY', 'ORDERS_TODAY', 'gasto_TODAY',
+      'YESTERDAY', 'AYER', 'ORDERS_YESTERDAY', 'gasto_YESTERDAY'
     ];
 
     // Agregar patrones para semanas (W1, W2, W3, W4, etc.)
@@ -125,9 +125,9 @@ export class GoogleSheetsService {
       periodPatterns.push(
         `WEEK_${week}`, `W_${week}`, `W${week}`,
         `SEMANA_${week}`, `S_${week}`, `S${week}`,
-        `ORDERS_W${week}`, `GASTOS_W${week}`,
-        `ORDERS_WEEK_${week}`, `GASTOS_WEEK_${week}`,
-        `ORDERS_LW${week}`, `GASTOS_LW${week}` // ✅ Agregar patrón LW (Last Week)
+        `ORDERS_W${week}`, `gasto_W${week}`,
+        `ORDERS_WEEK_${week}`, `gasto_WEEK_${week}`,
+        `ORDERS_LW${week}`, `gasto_LW${week}` // ✅ Agregar patrón LW (Last Week)
       );
     }
 

@@ -47,4 +47,9 @@ export class ConversationService {
   hasState(chatId: string): boolean {
     return this.contextualService.hasState(chatId);
   }
+
+  // ✅ NUEVO: Método para limpiar contexto completamente
+  clearContext(chatId: string): void {
+    this.contextualService.clearContext(chatId);
+  }
 }

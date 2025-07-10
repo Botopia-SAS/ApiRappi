@@ -96,13 +96,17 @@ export class MessageHandlerService {
     const hasBarucMention = isBotMentioned || text.includes('baruc');
     const hasActiveConversation = this.conv.hasState(msg.from);
 
-    // Procesar si:
-    // 1. Menciona a Baruc explícitamente
-    // 2. Ya hay una conversación activa (mantener contexto)
-    // 3. Es un grupo y el mensaje podría ser relevante
+    // ✅ MEJORAR: Ser más específico sobre cuándo procesar
     if (!hasBarucMention && !hasActiveConversation) {
-      // Solo ignorar si definitivamente no es para el bot
       console.log('⏭️ Mensaje ignorado - no es para Baruc y no hay conversación activa');
+      return { shouldProcess: false, rawForConv: '' };
+    }
+
+    // ✅ NUEVO: Si es una palabra de cancelación simple y no hay contexto activo, ignorar
+    const cancelationWords = ['nada', 'no', 'gracias', 'ok', 'listo', 'ya'];
+    if (!hasBarucMention && !hasActiveConversation && 
+        cancelationWords.some(word => text === word || text.includes(word))) {
+      console.log('⏭️ Mensaje de cancelación ignorado - no hay conversación activa');
       return { shouldProcess: false, rawForConv: '' };
     }
 
@@ -134,7 +138,7 @@ export class MessageHandlerService {
 
       // Manejar gráficas
       if (reply.startsWith('Haré las gráficas de')) {
-        const tipo = reply.includes('órdenes') ? 'ordenes' : 'gastos';
+        const tipo = reply.includes('órdenes') ? 'ordenes' : 'gasto';
         let periodo = 4; // Default 4 semanas
 
         // Extraer período de la respuesta si es posible
@@ -160,12 +164,17 @@ export class MessageHandlerService {
       const success = await this.messageSender.sendMessage(chatId, analysis, 2);
       if (!success) {
         await this.messageSender.sendMessage(chatId, 'Lo siento, hubo un error al enviar el reporte de OP ZONES 😕', 1);
+      } else {
+        // ✅ NUEVO: Marcar como completado
+        console.log(`✅ Análisis OP ZONES completado para ${chatId}`);
       }
     } catch (error) {
       console.error('Error en análisis OP ZONES:', error);
       await this.messageSender.sendMessage(chatId, 'Lo siento, hubo un error al generar el reporte de OP ZONES 😕');
     } finally {
       this.conv.clearOpZonesState(chatId);
+      // ✅ NUEVO: Limpiar contexto después de completar
+      this.conv.clearContext(chatId);
     }
   }
 
@@ -176,12 +185,17 @@ export class MessageHandlerService {
       const success = await this.messageSender.sendMessage(chatId, analysis, 2);
       if (!success) {
         await this.messageSender.sendMessage(chatId, 'Lo siento, hubo un error al enviar el análisis MLTV 😕', 1);
+      } else {
+        // ✅ NUEVO: Marcar como completado y limpiar contexto
+        console.log(`✅ Análisis MLTV completado para ${chatId}`);
       }
     } catch (error) {
       console.error('Error en análisis MLTV:', error);
       await this.messageSender.sendMessage(chatId, 'Lo siento, hubo un error al analizar los datos de multiverticalidad 😕');
     } finally {
       this.conv.clearMLTVState(chatId);
+      // ✅ NUEVO: Limpiar contexto después de completar
+      this.conv.clearContext(chatId);
     }
   }
 
@@ -284,10 +298,14 @@ export class MessageHandlerService {
           }
           finalMessage += ` 📊`;
         } else if (serialializationErrors > 0) {
-          finalMessage += ` Se procesaron ${serialializationErrors}/${mediaObjects.length} gráficas 📊`;
+          finalMessage += ` Se procesaron ${serialializationErrors}/${mediaObjects.length} gráficas (errores de conexión pero probablemente enviadas) 📊`;
         }
 
         await this.messageSender.sendMessage(chatId, finalMessage);
+        
+        // ✅ NUEVO: Marcar tarea como completada
+        this.conv.clearContext(chatId); // Limpiar contexto después de completar
+        console.log(`✅ Generación de gráficas completada para ${chatId}`);
       } else {
         await this.messageSender.sendMessage(
           chatId,

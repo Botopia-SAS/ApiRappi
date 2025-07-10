@@ -3,7 +3,7 @@ import { GeminiService } from '../thirtparty/gemini.service';
 
 export interface IntentResponse {
   intencion: 'graficas' | 'mltv' | 'op_zones' | 'saludo' | 'desconocido';
-  variable?: 'ordenes' | 'gastos';
+  variable?: 'ordenes' | 'gasto';
   periodo?: number;
   tipo_reporte?: 'semanal' | 'mensual';
 }
@@ -23,7 +23,7 @@ INTENCIONES DISPONIBLES:
 - "desconocido": No se puede determinar la intención
 
 PARA GRÁFICAS:
-- variable: "ordenes" o "gastos" (null si no se especifica)
+- variable: "ordenes" o "gasto" (null si no se especifica)
 - periodo: número de semanas a graficar (1-4 MÁXIMO, null si no se especifica)
   * IMPORTANTE: El período es acumulativo - incluye hoy, ayer y las semanas hacia atrás
   * Cada período representa columnas adicionales en el dataset
@@ -38,14 +38,14 @@ EJEMPLOS:
 Usuario: "Baruc me ayudas con tabla de órdenes"
 Respuesta: {"intencion":"graficas","variable":"ordenes","periodo":null}
 
-Usuario: "Baruc gráficas de gastos de 2 semanas"
-Respuesta: {"intencion":"graficas","variable":"gastos","periodo":2}
+Usuario: "Baruc gráficas de gasto de 2 semanas"
+Respuesta: {"intencion":"graficas","variable":"gasto","periodo":2}
 
 Usuario: "Baruc gráficas de órdenes del último mes"
 Respuesta: {"intencion":"graficas","variable":"ordenes","periodo":4}
 
-Usuario: "Baruc gráficas de 8 semanas de gastos"
-Respuesta: {"intencion":"graficas","variable":"gastos","periodo":4}
+Usuario: "Baruc gráficas de 8 semanas de gasto"
+Respuesta: {"intencion":"graficas","variable":"gasto","periodo":4}
 
 Usuario: "Baruc gráficas del trimestre"
 Respuesta: {"intencion":"graficas","variable":null,"periodo":4}
