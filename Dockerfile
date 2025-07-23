@@ -1,8 +1,14 @@
 # Usar imagen de Node con todas las dependencias necesarias
 FROM node:18-bullseye
 
+# Crear usuario no-root para seguridad
+RUN groupadd -r pptruser && useradd -r -g pptruser -G audio,video pptruser \
+    && mkdir -p /home/pptruser/Downloads \
+    && chown -R pptruser:pptruser /home/pptruser
+
 # Instalar dependencias del sistema para Chromium
 RUN apt-get update && apt-get install -y \
+    chromium \
     wget \
     ca-certificates \
     fonts-liberation \
@@ -46,14 +52,24 @@ RUN apt-get update && apt-get install -y \
 # Establecer directorio de trabajo
 WORKDIR /app
 
-# Copiar archivos de dependencias
-COPY package*.json ./
+# Cambiar permisos del directorio de trabajo
+RUN chown -R pptruser:pptruser /app
 
-# Instalar dependencias
-RUN npm ci --only=production
+# Establecer variables de entorno para Puppeteer
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+
+# Cambiar a usuario no-root
+USER pptruser
+
+# Copiar archivos de dependencias
+COPY --chown=pptruser:pptruser package*.json ./
+
+# Instalar dependencias (sin --only=production para incluir devDependencies)
+RUN npm ci
 
 # Copiar código fuente
-COPY . .
+COPY --chown=pptruser:pptruser . .
 
 # Compilar TypeScript
 RUN npm run build
