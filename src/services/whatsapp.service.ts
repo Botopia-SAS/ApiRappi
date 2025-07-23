@@ -52,11 +52,21 @@ export class WhatsappService {
       puppeteer: {
         headless: true,
         args: [
-          '--no-sandbox', 
-          '--disable-setuid-sandbox',
+          '--no-sandbox',
+          '--disable-setuid-sandbox', 
           '--disable-web-security',
-          '--disable-features=VizDisplayCompositor'
-        ]
+          '--disable-features=VizDisplayCompositor',
+          '--disable-dev-shm-usage', // ✅ Importante para contenedores
+          '--disable-gpu',
+          '--no-first-run',
+          '--no-zygote',
+          '--single-process', // ✅ Importante para Railway
+          '--disable-background-timer-throttling',
+          '--disable-backgrounding-occluded-windows',
+          '--disable-renderer-backgrounding'
+        ],
+        // ✅ Usar Chromium del sistema si está disponible
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined
       }
     });
     this.qrCode = null;
